@@ -1,61 +1,50 @@
-name: Deploy Next.js Frontend
+name: Deploy Storefront
 
 on:
   push:
     branches:
-      - main   # deploy when pushing to main branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      # 2. Setup Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: 'yarn'
 
-      # 3. Install dependencies
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: npm install
 
-      # 4. Build Next.js
-      - name: Build Next.js
-        run: yarn build && yarn export
-        env:
-          MEDUSA_BACKEND_URL: https://israelcloud.xyz/api
-          NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://israelcloud.xyz/api
-          NEXT_PUBLIC_BASE_URL: https://israelcloud.xyz
-          NEXT_PUBLIC_DEFAULT_REGION: us
-          NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${{ secrets.MEDUSA_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_KEY }}
-          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+      - name: Build Next.js app
+        run: npm run build
 
-      # 5. Ensure target folder exists on server
-      - name: Prepare server folder
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: 54.159.56.126
-          username: ubuntu
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            sudo mkdir -p /var/www/html
-            sudo chown -R ubuntu:ubuntu /var/www/html
+      - name: Export static files
+        run: npm run export
 
-      # 6. Copy files to server
-      - name: Deploy via SCP
+      - name: Copy build to server (tmp folder)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: 54.159.56.126
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "out/*"
-          target: "/var/www/html"
+          target: "/home/ubuntu/tmp_build"
           strip_components: 1
+
+      - name: Deploy to web root
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: 54.159.56.126
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo rm -rf /var/www/html/*
+            sudo mv /home/ubuntu/tmp_build/* /var/www/html/
+            sudo systemctl restart nginx
 
