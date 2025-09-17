@@ -3,11 +3,20 @@ name: Deploy Frontend
 on:
   push:
     branches:
-      - main   # Trigger on pushes to main branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    env:
+      MEDUSA_BACKEND_URL: ${{ vars.MEDUSA_BACKEND_URL }}
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${{ vars.NEXT_PUBLIC_MEDUSA_BACKEND_URL }}
+      NEXT_PUBLIC_BASE_URL: ${{ vars.NEXT_PUBLIC_BASE_URL }}
+      NEXT_PUBLIC_DEFAULT_REGION: ${{ vars.NEXT_PUBLIC_DEFAULT_REGION }}
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_KEY }}
+      REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
 
     steps:
       - name: Checkout code
@@ -44,4 +53,3 @@ jobs:
             pm2 delete storefront || true
             pm2 start npm --name "storefront" -- run start
             pm2 save
-
