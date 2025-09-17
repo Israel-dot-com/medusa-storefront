@@ -1,55 +1,61 @@
-name: Deploy Frontend
+name: Deploy Next.js Frontend
 
 on:
   push:
     branches:
-      - main
+      - main   # deploy when pushing to main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    env:
-      MEDUSA_BACKEND_URL: ${{ vars.MEDUSA_BACKEND_URL }}
-      NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${{ vars.NEXT_PUBLIC_MEDUSA_BACKEND_URL }}
-      NEXT_PUBLIC_BASE_URL: ${{ vars.NEXT_PUBLIC_BASE_URL }}
-      NEXT_PUBLIC_DEFAULT_REGION: ${{ vars.NEXT_PUBLIC_DEFAULT_REGION }}
-      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY }}
-      NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_KEY }}
-      REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
-
     steps:
+      # 1. Checkout repo
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
+      # 2. Setup Node.js
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18
+          cache: 'yarn'
 
-      - name: Install dependencies and build
-        run: |
-          npm install
-          npm run build
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
-      - name: Copy build files to server
-        uses: appleboy/scp-action@v0.1.7
+      # 4. Build Next.js
+      - name: Build Next.js
+        run: yarn build && yarn export
+        env:
+          MEDUSA_BACKEND_URL: https://israelcloud.xyz/api
+          NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://israelcloud.xyz/api
+          NEXT_PUBLIC_BASE_URL: https://israelcloud.xyz
+          NEXT_PUBLIC_DEFAULT_REGION: us
+          NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${{ secrets.MEDUSA_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_KEY }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+
+      # 5. Ensure target folder exists on server
+      - name: Prepare server folder
+        uses: appleboy/ssh-action@v0.1.7
         with:
-          host: ${{ secrets.SERVER_HOST }}
+          host: 54.159.56.126
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: ".,!.git"
-          target: "${{ secrets.APP_DIR }}"
-
-      - name: Restart app with PM2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.APP_DIR }}
-            npm install --production
-            pm2 delete storefront || true
-            pm2 start npm --name "storefront" -- run start
-            pm2 save
+            sudo mkdir -p /var/www/html
+            sudo chown -R ubuntu:ubuntu /var/www/html
+
+      # 6. Copy files to server
+      - name: Deploy via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 54.159.56.126
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "out/*"
+          target: "/var/www/html"
+          strip_components: 1
+
