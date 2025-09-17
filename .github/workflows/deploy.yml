@@ -1,4 +1,4 @@
-name: Deploy Medusa Storefront
+name: Deploy Frontend
 
 on:
   push:
@@ -6,30 +6,51 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    env:
+      MEDUSA_BACKEND_URL: ${{ vars.MEDUSA_BACKEND_URL }}
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${{ vars.NEXT_PUBLIC_MEDUSA_BACKEND_URL }}
+      NEXT_PUBLIC_BASE_URL: ${{ vars.NEXT_PUBLIC_BASE_URL }}
+      NEXT_PUBLIC_DEFAULT_REGION: ${{ vars.NEXT_PUBLIC_DEFAULT_REGION }}
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_KEY }}
+      REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies and build
+        run: |
+          npm install
+          npm run build
 
-      - name: Build project
-        run: npm run build
-
-      - name: Deploy to EC2
+      - name: Copy build files to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: ".next/**,public/**,package.json,next.config.js"
-          target: "/var/www/html"
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: ".,!.git"
+          target: "${{ secrets.APP_DIR }}"
+
+      - name: Restart app with PM2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ${{ secrets.APP_DIR }}
+            sudo npm install --production
+            sudo pm2 delete storefront || true
+            sudo pm2 start npm --name "storefront" -- run start
+            sudo pm2 save
 
