@@ -1,4 +1,4 @@
-name: Deploy Storefront
+name: Deploy Frontend
 
 on:
   push:
@@ -9,42 +9,49 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      MEDUSA_BACKEND_URL: ${{ vars.MEDUSA_BACKEND_URL }}
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${{ vars.NEXT_PUBLIC_MEDUSA_BACKEND_URL }}
+      NEXT_PUBLIC_BASE_URL: ${{ vars.NEXT_PUBLIC_BASE_URL }}
+      NEXT_PUBLIC_DEFAULT_REGION: ${{ vars.NEXT_PUBLIC_DEFAULT_REGION }}
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_STRIPE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_KEY }}
+      REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies and build
+        run: |
+          npm install
+          npm run build
+          npm run export
 
-      - name: Build Next.js app
-        run: npm run build
-
-      - name: Export static files
-        run: npm run export
-
-      - name: Copy build to server (tmp folder)
+      - name: Upload build files to server (temp folder)
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: 54.159.56.126
+          host: ${{ secrets.SERVER_HOST }}
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "out/*"
           target: "/home/ubuntu/tmp_build"
           strip_components: 1
 
-      - name: Deploy to web root
-        uses: appleboy/ssh-action@v0.1.7
+      - name: Deploy to Nginx web root
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 54.159.56.126
+          host: ${{ secrets.SERVER_HOST }}
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             sudo rm -rf /var/www/html/*
             sudo mv /home/ubuntu/tmp_build/* /var/www/html/
+            sudo chown -R www-data:www-data /var/www/html
             sudo systemctl restart nginx
 
