@@ -41,6 +41,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "israelcloud.xyz",
       },
+      {
+        protocol: "https",
+        hostname: "freepik.com",
+      },
     ],
   },
 }

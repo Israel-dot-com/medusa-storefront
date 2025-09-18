@@ -1,15 +1,18 @@
 import { listCategories } from "@lib/data/categories"
 import { listCollections } from "@lib/data/collections"
+import { listRegions } from "@lib/data/regions"
 import { Text, clx } from "@medusajs/ui"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import MedusaCTA from "@modules/layout/components/medusa-cta"
+import CountrySelect from "@modules/layout/components/country-select"
 
 export default async function Footer() {
   const { collections } = await listCollections({
     fields: "*products",
   })
   const productCategories = await listCategories()
+  const { regions } = await listRegions()
 
   return (
     <footer className="border-t border-ui-border-base w-full">
@@ -23,7 +26,8 @@ export default async function Footer() {
               Medusa Store
             </LocalizedClientLink>
           </div>
-          <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-3">
+          <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-4">
+            {/* Categories Section - Keep as is */}
             {productCategories && productCategories?.length > 0 && (
               <div className="flex flex-col gap-y-2">
                 <span className="txt-small-plus txt-ui-fg-base">
@@ -82,6 +86,8 @@ export default async function Footer() {
                 </ul>
               </div>
             )}
+
+            {/* Collections Section */}
             {collections && collections.length > 0 && (
               <div className="flex flex-col gap-y-2">
                 <span className="txt-small-plus txt-ui-fg-base">
@@ -89,10 +95,7 @@ export default async function Footer() {
                 </span>
                 <ul
                   className={clx(
-                    "grid grid-cols-1 gap-2 text-ui-fg-subtle txt-small",
-                    {
-                      "grid-cols-2": (collections?.length || 0) > 3,
-                    }
+                    "grid grid-cols-1 gap-2 text-ui-fg-subtle txt-small"
                   )}
                 >
                   {collections?.slice(0, 6).map((c) => (
@@ -108,47 +111,105 @@ export default async function Footer() {
                 </ul>
               </div>
             )}
+
+            {/* Customer Care Section */}
             <div className="flex flex-col gap-y-2">
-              <span className="txt-small-plus txt-ui-fg-base">Medusa</span>
+              <span className="txt-small-plus txt-ui-fg-base">Customer Care</span>
               <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle txt-small">
                 <li>
-                  <a
-                    href="https://github.com/medusajs"
-                    target="_blank"
-                    rel="noreferrer"
+                  <LocalizedClientLink
+                    href="/contact"
                     className="hover:text-ui-fg-base"
                   >
-                    GitHub
-                  </a>
+                    Contact
+                  </LocalizedClientLink>
                 </li>
                 <li>
-                  <a
-                    href="https://docs.medusajs.com"
-                    target="_blank"
-                    rel="noreferrer"
+                  <LocalizedClientLink
+                    href="/shipping"
                     className="hover:text-ui-fg-base"
                   >
-                    Documentation
-                  </a>
+                    Shipping
+                  </LocalizedClientLink>
                 </li>
                 <li>
-                  <a
-                    href="https://github.com/medusajs/nextjs-starter-medusa"
-                    target="_blank"
-                    rel="noreferrer"
+                  <LocalizedClientLink
+                    href="/returns"
                     className="hover:text-ui-fg-base"
                   >
-                    Source code
-                  </a>
+                    Returns
+                  </LocalizedClientLink>
+                </li>
+                <li>
+                  <LocalizedClientLink
+                    href="/faq"
+                    className="hover:text-ui-fg-base"
+                  >
+                    FAQ
+                  </LocalizedClientLink>
+                </li>
+              </ul>
+            </div>
+
+            {/* About Section */}
+            <div className="flex flex-col gap-y-2">
+              <span className="txt-small-plus txt-ui-fg-base">About</span>
+              <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle txt-small">
+                <li>
+                  <LocalizedClientLink
+                    href="/about"
+                    className="hover:text-ui-fg-base"
+                  >
+                    Our Story
+                  </LocalizedClientLink>
+                </li>
+                <li>
+                  <LocalizedClientLink
+                    href="/careers"
+                    className="hover:text-ui-fg-base"
+                  >
+                    Careers
+                  </LocalizedClientLink>
+                </li>
+                <li>
+                  <LocalizedClientLink
+                    href="/privacy"
+                    className="hover:text-ui-fg-base"
+                  >
+                    Privacy Policy
+                  </LocalizedClientLink>
+                </li>
+                <li>
+                  <LocalizedClientLink
+                    href="/terms"
+                    className="hover:text-ui-fg-base"
+                  >
+                    Terms of Service
+                  </LocalizedClientLink>
                 </li>
               </ul>
             </div>
           </div>
         </div>
-        <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
-          <Text className="txt-compact-small">
-            © {new Date().getFullYear()} Medusa Store. All rights reserved.
-          </Text>
+
+        {/* Bottom Section */}
+        <div className="flex flex-col sm:flex-row w-full mb-16 justify-between items-start sm:items-center gap-4 text-ui-fg-muted">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <Text className="txt-compact-small">
+              © {new Date().getFullYear()} Medusa Store. All rights reserved.
+            </Text>
+            
+            {/* Region Selector */}
+            {regions && (
+              <div className="relative">
+                <CountrySelect
+                  toggleState={true}
+                  regions={regions}
+                />
+              </div>
+            )}
+          </div>
+          
           <MedusaCTA />
         </div>
       </div>
