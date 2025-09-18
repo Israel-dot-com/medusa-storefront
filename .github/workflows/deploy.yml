@@ -49,8 +49,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.APP_DIR }}
-            sudo npm install --production
+            sudo npm install
             sudo pm2 delete storefront || true
-            sudo pm2 start npm --name "storefront" -- run start
+            sudo pm2 start npm --name "medusa-storefront" -- run start
             sudo pm2 save
 
